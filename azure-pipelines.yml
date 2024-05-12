@@ -19,11 +19,24 @@ variables:
 steps:
 - checkout: self
 
-- script: |
-    mvn package
-  displayName: 'Build the application'
-  workingDirectory: $(Build.SourcesDirectory)
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'clean package'
+    options: '-DskipTests=false'  # Ensure tests are not skipped
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.11'
+  displayName: 'Build and test the application'
 
 - script: |
     copy $(Build.SourcesDirectory)\target\schoolhub-backend.war $(targetDirectory)
-  displayName: 'Copy JAR file to target directory'
+  displayName: 'Copy WAR file to target directory'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.SourcesDirectory)\target\schoolhub-backend.war'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+  displayName: 'Publish build artifacts'
