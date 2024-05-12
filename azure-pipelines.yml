@@ -1,0 +1,36 @@
+# Maven
+# Build your Java project and run tests with Apache Maven.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/java
+
+trigger:
+  branches:
+    include:
+    - main  # Ensures the pipeline triggers on changes to the main branch
+
+pool:
+  name: 'CD - agent'
+  demands:
+  - agent.name -equals DESKTOP-DAHBI
+
+
+steps:
+- task: Maven@3
+  displayName: 'Build and Test with Maven'
+  inputs:
+    mavenPomFile: 'pom.xml'
+    options: '-B'  # Enables Maven’s batch mode which suppresses interactive output
+    goals: 'clean verify'  # 'verify' runs tests without deploying the package
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.17'
+    publishJUnitResults: true
+    testResultsFiles: '**/target/surefire-reports/TEST-*.xml'
+
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish Code Coverage Results'
+  condition: succeededOrFailed()
+  inputs:
+    codeCoverageTool: 'JaCoCo'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/target/site/jacoco/jacoco.xml'
+    reportDirectory: '$(System.DefaultWorkingDirectory)/**/target/site/jacoco/'
+
