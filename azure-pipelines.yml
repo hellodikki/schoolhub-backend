@@ -6,30 +6,28 @@
 trigger:
   branches:
     include:
-    - main
+    - main  # Ensures the pipeline triggers on changes to the main branch
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-latest'  # Specifies the VM image to use
 
 steps:
-- task: JavaToolInstaller@0
+- task: Maven@3
+  displayName: 'Build and Test with Maven'
   inputs:
-    versionSpec: '17'
-    jdkArchitectureOption: 'x64'
-    jdkSourceOption: 'PreInstalled'
+    mavenPomFile: 'pom.xml'
+    options: '-B'  # Enables Maven’s batch mode which suppresses interactive output
+    goals: 'clean verify'  # 'verify' runs tests without deploying the package
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.17'
+    publishJUnitResults: true
+    testResultsFiles: '**/target/surefire-reports/TEST-*.xml'
 
-- script: |
-    chmod +x mvnw
-    ./mvnw clean install
-  displayName: 'Build and test with Maven'
-
-- task: PublishTestResults@2
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish Code Coverage Results'
+  condition: succeededOrFailed()
   inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/TEST-*.xml'
-    failTaskOnFailedTests: true
+    codeCoverageTool: 'JaCoCo'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/target/site/jacoco/jacoco.xml'
+    reportDirectory: '$(System.DefaultWorkingDirectory)/**/target/site/jacoco/'
 
-- script: ./mvnw jib:dockerBuild -Djib.to.image=$(dockerRegistry)/$(imageName):$(Build.BuildId)
-  displayName: 'Build and push Docker image'
-  env:
-    JAVA_HOME: $(JAVA_HOME_17_X64)
