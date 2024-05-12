@@ -9,7 +9,10 @@ trigger:
     - main  # Ensures the pipeline triggers on changes to the main branch
 
 pool:
-  vmImage: 'ubuntu-latest'  # Specifies the VM image to use
+  name: 'CD - agent'
+  demands:
+  - agent.name -equals DESKTOP-DAHBI
+
 
 steps:
 - task: Maven@3
