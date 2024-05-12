@@ -8,7 +8,7 @@ pool:
 
 variables:
   buildConfigPath: 'src/main/resources/application.properties'
-  artifactName: '$(Build.BuildNumber)-$(Build.DefinitionName).war'
+  artifactName: '$(Build.BuildNumber)-$(Build.DefinitionName).jar'
   targetDirectory: 'C:\Users\PC\Desktop\TargetBackend'
 
 stages:
@@ -49,7 +49,7 @@ stages:
   condition: succeeded()
   jobs:
   - deployment: DeploymentJob
-    environment: 'production'
+    environment: 'staging'
     strategy:
       runOnce:
         deploy:
@@ -58,6 +58,5 @@ stages:
             artifact: drop
 
           - script: |
-              # Add your deployment script here, e.g., SSH, SCP commands to deploy the JAR to server
               echo "Deploying to $(environment.name)"
             displayName: 'Deploy Application'
