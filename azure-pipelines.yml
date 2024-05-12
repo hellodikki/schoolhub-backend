@@ -4,39 +4,32 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/java
 
 trigger:
-- main
+  branches:
+    include:
+    - main
 
 pool:
-  name: 'CD - agent'
-  demands:
-  - agent.name -equals DESKTOP-DAHBI
-
-variables:
-  buildConfigPath: 'src/main/resources/application.properties'
-  artifactName: '$(Build.BuildNumber)-$(Build.DefinitionName).war'
-  targetDirectory: 'C:\Users\PC\Desktop\TargetBackend'
+  vmImage: 'ubuntu-latest'
 
 steps:
-- checkout: self
-
-- task: Maven@3
+- task: JavaToolInstaller@0
   inputs:
-    mavenPomFile: 'pom.xml'
-    goals: 'clean package'
-    options: '-DskipTests=false'  # Ensure tests are not skipped
-    publishJUnitResults: true
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '1.11'
-  displayName: 'Build and test the application'
+    versionSpec: '17'
+    jdkArchitectureOption: 'x64'
+    jdkSourceOption: 'PreInstalled'
 
 - script: |
-    copy $(Build.SourcesDirectory)\target\schoolhub-backend.war $(targetDirectory)
-  displayName: 'Copy WAR file to target directory'
+    chmod +x mvnw
+    ./mvnw clean install
+  displayName: 'Build and test with Maven'
 
-- task: PublishBuildArtifacts@1
+- task: PublishTestResults@2
   inputs:
-    PathtoPublish: '$(Build.SourcesDirectory)\target\schoolhub-backend.war'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
-  displayName: 'Publish build artifacts'
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/TEST-*.xml'
+    failTaskOnFailedTests: true
+
+- script: ./mvnw jib:dockerBuild -Djib.to.image=$(dockerRegistry)/$(imageName):$(Build.BuildId)
+  displayName: 'Build and push Docker image'
+  env:
+    JAVA_HOME: $(JAVA_HOME_17_X64)
