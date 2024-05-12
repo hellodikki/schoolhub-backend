@@ -11,22 +11,53 @@ variables:
   artifactName: '$(Build.BuildNumber)-$(Build.DefinitionName).war'
   targetDirectory: 'C:\Users\PC\Desktop\TargetBackend'
 
-steps:
-- checkout: self
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
+    - checkout: self
 
-- script: |
-    mvn verify
-  displayName: 'Build and test the application'
-  workingDirectory: $(Build.SourcesDirectory)
+    - script: |
+        mvn verify
+      displayName: 'Build and test the application'
+      workingDirectory: $(Build.SourcesDirectory)
 
-- task: PublishTestResults@2
-  condition: succeededOrFailed()
-  inputs:
-    testResultsFiles: '**/target/surefire-reports/TEST-*.xml'
-    testRunTitle: 'Publish Test Results'
-  displayName: 'Publish Test Results'
+    - task: PublishTestResults@2
+      condition: succeededOrFailed()
+      inputs:
+        testResultsFiles: '**/target/surefire-reports/TEST-*.xml'
+        testRunTitle: 'Publish Test Results'
+      displayName: 'Publish Test Results'
 
-- script: |
-    copy $(Build.SourcesDirectory)\target\schoolhub-backend-0.0.1-SNAPSHOT.jar $(targetDirectory)
-  displayName: 'Copy JAR file to target directory'
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)/target'
+        Contents: '**/*.jar'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      displayName: 'Copy JAR file to artifact staging directory'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+      displayName: 'Publish Artifact'
+
+- stage: Deploy
+  dependsOn: Build
   condition: succeeded()
+  jobs:
+  - deployment: DeploymentJob
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          - script: |
+              # Add your deployment script here, e.g., SSH, SCP commands to deploy the JAR to server
+              echo "Deploying to $(environment.name)"
+            displayName: 'Deploy Application'
